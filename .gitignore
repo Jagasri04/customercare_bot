@@ -1,4 +1,22 @@
-venv/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 *.sqlite3
+*.log
+*.env
+venv/
+.env/
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+*.db
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
