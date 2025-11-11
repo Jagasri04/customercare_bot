@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Care Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+        #chat-box {
+            width: 400px;
+            height: 400px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .user {
+            text-align: right;
+            color: blue;
+        }
+        .bot {
+            text-align: left;
+            color: green;
+        }
+        #input-box {
+            margin-top: 10px;
+            display: flex;
+        }
+        #message-input {
+            flex: 1;
+            padding: 5px;
+        }
+        #send-btn {
+            padding: 5px 10px;
+        }
+        .star-rating {
+            display: flex;
+            gap: 5px;
+            cursor: pointer;
+        }
+        .star-rating span {
+            font-size: 24px;
+        }
+        .star-rating .selected {
+            color: gold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Customer Care Chatbot</h1>
+
+<div id="chat-box"></div>
+
+<div id="input-box">
+    <input type="text" id="message-input" placeholder="Type your message...">
+    <button id="send-btn">Send</button>
+</div>
+
+<script>
+const chatBox = document.getElementById("chat-box");
+const messageInput = document.getElementById("message-input");
+const sendBtn = document.getElementById("send-btn");
+
+let conversationState = "greeting"; // states: greeting, waiting_policy_number, waiting_more_details
+
+// Initial greeting
+addMessage("Hello! Welcome to our customer care. How can I help you today?");
+
+// Function to add messages
+function addMessage(text, sender="bot") {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `message ${sender}`;
+    msgDiv.innerHTML = text;
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Function to show star rating
+function addStarRating() {
+    const ratingDiv = document.createElement("div");
+    ratingDiv.className = "star-rating";
+
+    for (let i = 1; i <= 5; i++) {
+        const star = document.createElement("span");
+        star.innerHTML = "★";
+        star.addEventListener("click", () => {
+            document.querySelectorAll(".star-rating span").forEach(s => s.classList.remove("selected"));
+            for (let j = 0; j < i; j++) {
+                ratingDiv.children[j].classList.add("selected");
+            }
+            addMessage(`You rated ${i} star(s). Thank you for your feedback!`);
+            ratingDiv.remove();
+        });
+        ratingDiv.appendChild(star);
+    }
+
+    chatBox.appendChild(ratingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Send message function
+async function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, "user");
+    messageInput.value = "";
+
+    // === Handle conversation states ===
+    if (conversationState === "waiting_policy_number") {
+        if (/^\d{6}$/.test(message)) {
+            addMessage(`Fetching details for policy number: ${message}`);
+            addMessage(`Policy #${message} is active. Expiration date: 31-Dec-2025. Premium due: 15th of every month.`);
+            addMessage("Do you want any other details? (yes/no)");
+            conversationState = "waiting_more_details";
+        } else {
+            addMessage("That doesn't look like a valid policy number. Please enter the numeric 6-digit policy number.");
+        }
+        return;
+    }
+
+    if (conversationState === "waiting_more_details") {
+        if (message.toLowerCase() === "yes") {
+            addMessage("Please tell me what details you want.");
+            conversationState = "greeting"; // back to normal chat
+        } else if (message.toLowerCase() === "no") {
+            addMessage("Thank you for using our service! Please rate your chat experience from 1 to 5.");
+            addStarRating();
+            conversationState = "greeting";
+        } else {
+            addMessage("Please answer with 'yes' or 'no'. Do you want any other details?");
+        }
+        return;
+    }
+
+    // === Check for policy number request ===
+    if (message.toLowerCase().includes("policy")) {
+        addMessage("Please provide your 6-digit policy number.");
+        conversationState = "waiting_policy_number";
+        return;
+    }
+
+    // === Check for payment issues ===
+    if (message.toLowerCase().includes("payment")) {
+        addMessage("Sorry to hear that. Please try again after some time or contact our agent for assistance.");
+        addMessage("Agent contact: +91-9876543210");
+        return;
+    }
+
+    // === Normal backend chat ===
+    const response = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+    });
+
+    const data = await response.json();
+    const reply = data.reply;
+
+    // If backend asks for policy number, update state
+    if (reply.toLowerCase().includes("please provide your policy number")) {
+        conversationState = "waiting_policy_number";
+    }
+
+    addMessage(reply);
+}
+
+sendBtn.addEventListener("click", sendMessage);
+messageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+});
+</script>
+
+</body>
+</html>
